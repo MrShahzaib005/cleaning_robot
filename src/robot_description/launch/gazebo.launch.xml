@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- Gazebo + new_world -->
+  <include file="$(find-pkg-share gazebo_ros)/launch/gazebo.launch.py">
+    <arg name="world" value="$(find-pkg-share robot_description)/worlds/new_world"/>
+    <arg name="verbose" value="false"/>
+  </include>
+
+  <!-- Robot State Publisher -->
+  <node pkg="robot_state_publisher" exec="robot_state_publisher"
+        name="robot_state_publisher" output="screen">
+    <param name="robot_description"
+           value="$(command 'xacro $(find-pkg-share robot_description)/urdf/robot.urdf.xacro')"/>
+  </node>
+
+  <!-- Spawn Robot -->
+  <node pkg="gazebo_ros" exec="spawn_entity.py" name="spawn_robot"
+        output="screen"
+        args="-topic robot_description -entity cleaning_robot -x 0 -y 0 -z 0.1"/>
+
+  <!-- Static TF -->
+  <node pkg="tf2_ros" exec="static_transform_publisher"
+        name="base_link_to_footprint"
+        args="0 0 0 0 0 0 1 base_link base_footprint"/>
+
+  <!-- EKF -->
+  <node pkg="robot_localization" exec="ekf_node"
+        name="ekf_filter_node" output="screen">
+    <param name="use_sim_time" value="true"/>
+    <param from="$(find-pkg-share robot_description)/config/ekf_config.yaml"/>
+  </node>
+
+  <!-- SLAM Toolbox -->
+  <node pkg="slam_toolbox" exec="async_slam_toolbox_node"
+        name="slam_toolbox" output="screen">
+    <param name="use_sim_time" value="true"/>
+    <param from="$(find-pkg-share robot_description)/config/slam_config.yaml"/>
+  </node>
+
+  <!-- Minimal RViz — sirf map! -->
+  <node pkg="rviz2" exec="rviz2" name="rviz2" output="screen"
+        args="-d $(find-pkg-share robot_description)/rviz/slam_map.rviz"/>
+
+</launch>
